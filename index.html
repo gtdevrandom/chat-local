@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Local 🌐</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); 
+            color: #eee; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden;
+        }
+        #chat-container { 
+            width: 400px; 
+            background: #1f1f1f; 
+            border-radius: 15px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            height: 500px; 
+        }
+        #messages { 
+            list-style-type: none; 
+            padding: 0; 
+            flex: 1; 
+            overflow-y: auto; 
+            margin-bottom: 10px; 
+        }
+        li { 
+            padding: 8px 12px; 
+            border-radius: 12px; 
+            margin-bottom: 8px; 
+            max-width: 80%; 
+            word-wrap: break-word; 
+        }
+        li.system { 
+            color: #aaa; 
+            font-style: italic; 
+            text-align: center;
+        }
+        #input-container { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px;
+        }
+        #input { 
+            flex: 1; 
+            padding: 12px; 
+            border: 1px solid #555; 
+            border-radius: 12px; 
+            background: #2c2c2c; 
+            color: #eee; 
+            outline: none;
+        }
+        #send, #emoji-btn { 
+            padding: 10px 15px; 
+            border: none; 
+            background: #4CAF50; 
+            color: white; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 16px;
+        }
+        #send:hover, #emoji-btn:hover { 
+            background: #45a049; 
+        }
+        #pseudo-overlay { 
+            position: absolute; 
+            top:0; left:0; 
+            width:100%; height:100%; 
+            background: rgba(0,0,0,0.85); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100;
+        }
+        #pseudo-box { 
+            background: #2c2c2c; 
+            padding: 25px 30px; 
+            border-radius: 15px; 
+            text-align: center; 
+            color: #eee; 
+        }
+        #pseudo-input { 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            border: 1px solid #555; 
+            border-radius: 12px; 
+            background: #1e1e1e; 
+            color: #eee; 
+            width: 100%;
+            outline: none;
+        }
+        #color-picker { padding: 8px; border-radius: 8px; border: 1px solid #555; cursor: pointer; margin-bottom: 15px; }
+        #emoji-picker { 
+            display: none; 
+            position: absolute; 
+            background: #2c2c2c; 
+            padding: 10px; 
+            border-radius: 12px; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5); 
+            max-width: 220px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 5px;
+            z-index: 10; 
+        }
+        #emoji-picker span { 
+            cursor: pointer; 
+            font-size: 24px; 
+            padding: 5px; 
+            transition: transform 0.2s;
+        }
+        #emoji-picker span:hover { 
+            transform: scale(1.2); 
+            background: #333; 
+            border-radius: 50%; 
+        }
+        #users-box {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #2c2c2c;
+            padding: 12px;
+            border-radius: 12px;
+            color: #eee;
+            width: 160px;
+            font-size: 14px;
+        }
+        #users-list { list-style: none; padding: 0; margin: 0; }
+        #users-list li { margin-bottom: 6px; padding: 4px 0; }
+        #update-btn {
+            margin-top:10px;
+            padding:6px 10px;
+            border:none;
+            border-radius:8px;
+            background:#4CAF50;
+            color:white;
+            cursor:pointer;
+            width:100%;
+        }
+        #update-btn:hover {
+            background:#45a049;
+        }
+    </style>
+</head>
+<body>
+<div id="users-box">
+    <h3>👥 Connectés :</h3>
+    <ul id="users-list"></ul>
+    <button id="update-btn">✏️ Modifier profil</button>
+</div>
+
+<div id="pseudo-overlay">
+    <div id="pseudo-box">
+        <h2>🖊 Choisis ton pseudo</h2>
+        <input id="pseudo-input" placeholder="Ton pseudo" />
+        <input id="color-picker" type="color" value="#4CAF50" />
+
+        <br>
+        <button id="start">🚀 Entrer</button>
+    </div>
+</div>
+<!-- Ajouter ce bloc juste après <div id="users-box"> -->
+<div style="position:absolute; top:10px; right:10px; z-index:150;">
+    <button id="bg-btn" style="padding:8px 12px; border:none; border-radius:8px; background:#4CAF50; color:white; cursor:pointer;">🖼️ Charger fond</button>
+    <input type="file" id="bg-input" accept="image/*" style="display:none;" />
+</div>
+<div style="position:absolute; top:50px; right:10px; z-index:150;">
+    <button id="theme-btn" style="padding:8px 12px; border:none; border-radius:8px; background:#4CAF50; color:white; cursor:pointer;">🌓 Thème</button>
+</div>
+<div style="position:absolute; top:90px; right:10px; z-index:150; text-align:right;">
+    <label for="opacity-slider" style="color:white; font-size:12px;">🔆 Opacité</label>
+    <input type="range" id="opacity-slider" min="0.1" max="1" step="0.05" value="1" style="width:120px;">
+</div>
+
+<div id="chat-container" style="display:none;">
+    <ul id="messages"></ul>
+    <div id="input-container">
+        <button id="emoji-btn">😊</button>
+        <input id="input" autocomplete="off" placeholder="Écris un message..." />
+        <button id="send">📨 Envoyer</button>
+        <div id="emoji-picker"></div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+const overlay = document.getElementById('pseudo-overlay');
+const pseudoInput = document.getElementById('pseudo-input');
+const startBtn = document.getElementById('start');
+const chatContainer = document.getElementById('chat-container');
+const messages = document.getElementById('messages');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const emojiBtn = document.getElementById('emoji-btn');
+const emojiPicker = document.getElementById('emoji-picker');
+const usersList = document.getElementById('users-list');
+const colorPicker = document.getElementById('color-picker');
+const updateBtn = document.getElementById('update-btn');
+
+let pseudo = localStorage.getItem('pseudo') || '';
+let color = localStorage.getItem('color') || '#4CAF50';
+
+// Liste d’emojis
+const emojis = ['😀','😎','😂','😍','😢','👍','🙏','💡','🔥','❤️','😜','🤔','😇','🤩','😱','🥳','🤖','🎉','🌟','🍕'];
+emojis.forEach(e => {
+    const span = document.createElement('span');
+    span.textContent = e;
+    span.onclick = () => {
+        input.value += e;
+        emojiPicker.style.display = 'none';
+        input.focus();
+    };
+    emojiPicker.appendChild(span);
+});
+
+emojiPicker.style.display = 'none';
+
+// Affichage / masquage du picker
+emojiBtn.onclick = (e) => {
+    e.stopPropagation();
+    emojiPicker.style.display = emojiPicker.style.display === 'flex' ? 'none' : 'flex';
+    emojiPicker.style.flexWrap = 'wrap';
+};
+
+// Clic en dehors du picker pour le fermer
+document.addEventListener('click', (e) => {
+    if(!emojiPicker.contains(e.target) && e.target !== emojiBtn){
+        emojiPicker.style.display = 'none';
+    }
+});
+
+let lastMessageTime = 0; // Timestamp du dernier message envoyé
+
+function sendMessage(){
+    const msg = input.value.trim();
+
+    // Vérifier longueur
+    if(msg.length > 2000){
+        alert("⛔ Votre message ne peut pas dépasser 2000 caractères.");
+        return;
+    }
+
+    // Vérifier intervalle d'1 seconde
+    const now = Date.now();
+    if(now - lastMessageTime < 1000){
+        alert("⛔ Merci d'attendre 1 seconde entre chaque message.");
+        return;
+    }
+
+    if(msg){
+        socket.emit('chat message', msg);
+        input.value = '';
+        lastMessageTime = now; // Mettre à jour le timestamp
+    }
+}
+
+
+// Fonction pour entrer dans le chat
+function enterChat() {
+    pseudo = pseudoInput.value.trim() || pseudo;
+    color = colorPicker.value || color;
+
+    localStorage.setItem('pseudo', pseudo);
+    localStorage.setItem('color', color);
+
+    overlay.style.display = 'none';
+    chatContainer.style.display = 'flex';
+
+    socket.emit('new user', { pseudo, color });
+}
+
+// Bouton Entrer
+startBtn.onclick = enterChat;
+pseudoInput.addEventListener("keypress", e => { if(e.key === "Enter") enterChat(); });
+
+// Envoyer un message
+function sendMessage(){
+    const msg = input.value.trim();
+    if(msg){
+        socket.emit('chat message', msg);
+        input.value = '';
+    }
+}
+
+sendBtn.onclick = sendMessage;
+input.addEventListener("keypress", e => { if(e.key === "Enter") sendMessage(); });
+
+updateBtn.onclick = () => {
+    // Créer un overlay temporaire pour modifier pseudo et couleur
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = 0;
+    overlay.style.left = 0;
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0,0,0,0.85)';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.zIndex = 200;
+
+    const box = document.createElement('div');
+    box.style.background = '#2c2c2c';
+    box.style.padding = '25px 30px';
+    box.style.borderRadius = '15px';
+    box.style.textAlign = 'center';
+    box.style.color = '#eee';
+
+    box.innerHTML = `
+        <h2>🖊 Modifier profil</h2>
+        <input id="new-pseudo" placeholder="Pseudo" value="${pseudo}" style="padding:12px; margin-bottom:15px; border:1px solid #555; border-radius:12px; background:#1e1e1e; color:#eee; width:100%; outline:none;" />
+        <br>
+        <input id="new-color" type="color" value="${color}" style="padding:8px; border-radius:8px; border:1px solid #555; cursor:pointer; margin-bottom:15px;" />
+        <br>
+        <button id="save-profile" style="padding:10px 15px; border:none; border-radius:12px; background:#4CAF50; color:white; cursor:pointer;">💾 Sauvegarder</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('save-profile').onclick = () => {
+        const newPseudo = document.getElementById('new-pseudo').value.trim();
+        const newColor = document.getElementById('new-color').value;
+
+        if(newPseudo) pseudo = newPseudo;
+        if(newColor) color = newColor;
+
+        localStorage.setItem('pseudo', pseudo);
+        localStorage.setItem('color', color);
+
+        socket.emit('update user', { pseudo, color });
+
+        document.body.removeChild(overlay);
+    };
+};
+
+
+
+// Affichage des messages
+socket.on('chat message', (data) => {
+    const li = document.createElement('li');
+    li.textContent = data.pseudo + ': ' + data.message;
+
+    if(data.pseudo === 'System'){
+        li.classList.add('system');
+    } else {
+        li.style.color = data.color || '#eee';
+    }
+
+    messages.appendChild(li);
+    messages.scrollTop = messages.scrollHeight;
+});
+
+// Liste des utilisateurs avec couleur
+socket.on('users list', (users) => {
+    usersList.innerHTML = '';
+    users.forEach(u => {
+        const li = document.createElement('li');
+        li.textContent = '👤 ' + u.pseudo;
+        li.style.color = u.color || '#eee';
+        usersList.appendChild(li);
+    });
+});
+
+
+
+// Si pseudo déjà en localStorage
+if(pseudo){
+    pseudoInput.value = pseudo;
+    colorPicker.value = color;
+    overlay.style.display = 'none';
+    chatContainer.style.display = 'flex';
+    socket.emit('new user', { pseudo, color });
+}
+const bgBtn = document.getElementById('bg-btn');
+const bgInput = document.getElementById('bg-input');
+
+bgBtn.onclick = () => bgInput.click();
+
+bgInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if(file){
+        const reader = new FileReader();
+        reader.onload = function(evt){
+            const imageData = evt.target.result;
+            // Appliquer le fond
+            document.body.style.background = `url('${imageData}') no-repeat center center / cover`;
+            // Sauvegarder dans localStorage
+            localStorage.setItem('chatBackground', imageData);
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+const savedBg = localStorage.getItem('chatBackground');
+if(savedBg){
+    document.body.style.background = `url('${savedBg}') no-repeat center center / cover`;
+}
+
+const themeBtn = document.getElementById('theme-btn');
+
+function applyTheme(theme){
+    if(theme === 'light'){
+        // Corps et chat
+        document.body.style.backgroundColor = '#f0f0f0';
+        document.body.style.color = '#111';
+        chatContainer.style.background = '#ffffff';
+        chatContainer.style.color = '#111';
+        input.style.background = '#eee';
+        input.style.color = '#111';
+        sendBtn.style.background = '#4CAF50';
+        sendBtn.style.color = '#fff';
+        emojiBtn.style.background = '#4CAF50';
+        emojiBtn.style.color = '#fff';
+        overlay.style.background = 'rgba(255,255,255,0.85)';
+        document.getElementById('pseudo-box').style.background = '#ddd';
+        document.getElementById('pseudo-box').style.color = '#111';
+
+        // Liste des utilisateurs
+        document.getElementById('users-box').style.background = '#eee';
+        document.getElementById('users-box').style.color = '#111';
+        document.querySelectorAll('#users-list li').forEach(li => {
+            li.style.background = '#ddd';
+            li.style.color = '#111';
+        });
+    } else { // dark
+        // Corps et chat
+        document.body.style.background = localStorage.getItem('chatBackground') 
+            ? `url('${localStorage.getItem('chatBackground')}') no-repeat center center / cover` 
+            : 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)';
+        document.body.style.color = '#eee';
+        chatContainer.style.background = '#1f1f1f';
+        chatContainer.style.color = '#eee';
+        input.style.background = '#2c2c2c';
+        input.style.color = '#eee';
+        sendBtn.style.background = '#4CAF50';
+        sendBtn.style.color = '#fff';
+        emojiBtn.style.background = '#4CAF50';
+        emojiBtn.style.color = '#fff';
+        overlay.style.background = 'rgba(0,0,0,0.85)';
+        document.getElementById('pseudo-box').style.background = '#2c2c2c';
+        document.getElementById('pseudo-box').style.color = '#eee';
+
+        // Liste des utilisateurs
+        document.getElementById('users-box').style.background = '#2c2c2c';
+        document.getElementById('users-box').style.color = '#eee';
+        document.querySelectorAll('#users-list li').forEach(li => {
+            li.style.background = 'transparent';
+            li.style.color = li.dataset.color || '#eee'; // garder la couleur personnalisée des utilisateurs
+        });
+    }
+    localStorage.setItem('chatTheme', theme);
+}
+
+
+// Charger le thème au démarrage
+const savedTheme = localStorage.getItem('chatTheme') || 'dark';
+applyTheme(savedTheme);
+
+// Basculer au clic
+themeBtn.onclick = () => {
+    const currentTheme = localStorage.getItem('chatTheme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+};
+
+const opacitySlider = document.getElementById('opacity-slider');
+
+function applyOpacity(value){
+    // Convertir le pourcentage en valeur alpha
+    const alpha = parseFloat(value);
+
+    // Fond du chat
+    chatContainer.style.background = `rgba(31,31,31,${alpha})`; // correspond à #1f1f1f
+    document.getElementById('users-box').style.background = `rgba(44,44,44,${alpha})`; // #2c2c2c
+    document.getElementById('pseudo-box').style.background = `rgba(44,44,44,${alpha})`;
+
+    // Le texte reste complètement opaque
+    chatContainer.style.color = '#eee';
+    document.getElementById('users-box').style.color = '#eee';
+    document.getElementById('pseudo-box').style.color = '#eee';
+
+    localStorage.setItem('chatOpacity', value);
+}
+
+
+// Charger l’opacité au démarrage
+const savedOpacity = localStorage.getItem('chatOpacity') || 1;
+opacitySlider.value = savedOpacity;
+applyOpacity(savedOpacity);
+
+// Mettre à jour au changement
+opacitySlider.oninput = () => {
+    applyOpacity(opacitySlider.value);
+};
+
+
+</script>
+</body>
+</html>
